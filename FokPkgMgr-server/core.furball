@@ -1,0 +1,265 @@
+
+[FURDIR-HEADER] Zfur-location=``"core"``[/FURDIR-HEADER]
+[FURFILE-HEADER] Zfur-location=``"core/mod.rs"``;FUR-BONE;Zfur_dataeqpub mod sources;
+[/FURFILE-HEADER]
+[FURDIR-HEADER] Zfur-location=``"core/sources"``[/FURDIR-HEADER]
+[FURDIR-HEADER] Zfur-location=``"core/sources/install"``[/FURDIR-HEADER]
+[FURFILE-HEADER] Zfur-location=``"core/sources/install/minifurball.rs"``;FUR-BONE;Zfur_dataequse std::{
+  env,
+  fs,
+  io::{Read, Write},
+  path::Path,
+  io,
+  io::prelude::*,
+  io::BufReader,
+  fs::File,
+  convert::TryInto,
+  path::PathBuf,
+};
+
+
+pub fn decode(path: &Path, default_loc: String) -> io::Result<()> {
+
+
+    let mut file = fs::File::open(path)?;
+    let mut content = String::new();
+
+    file.read_to_string(&mut content);
+
+    let mut buffer:String = String::new();
+    for i in content.chars() {
+      buffer = buffer + &i.to_string();
+
+
+      if buffer.contains(&format!("[FURDIR-{}]", "HEADER")) && buffer.contains(&format!("[/FURDIR-{}]", "HEADER")) {
+
+          let mut fork = buffer.replace(&format!("[FURDIR-{}]", "HEADER"),"")
+              .replace(&format!("[/FURDIR-{}]", "HEADER"),"");
+
+          let locs: Vec<&str> = fork.split(&format!("fur-{}=", "location")).collect::<Vec<&str>>();
+
+          let mut loc: &str = &locs[1].replace("``\"", "").replace("\"``","");
+          let loctemp: String = default_loc.clone() + loc;
+          loc = &loctemp;
+ 
+          fs::create_dir(loc);
+      
+
+        buffer = "".to_string();
+      }
+
+      if buffer.contains(&format!("[FURFILE-{}]", "HEADER")) && buffer.contains(&format!("[/FURFILE-{}]", "HEADER")) {
+        let mut fork= buffer.replace(&format!("[FURFILE-{}]", "HEADER"),"")
+            .replace(&format!("[/FURFILE-{}]", "HEADER"),"");
+
+        let locs: Vec<&str> = fork.split(&format!(";{};", "FUR-BONE")).collect::<Vec<&str>>();
+
+
+        let mut loc: &str = &locs[0].split(&format!("fur-{}=", "location")).collect::<Vec<&str>>()[1].replace("\"``", "").replace("``\"", "");
+        let loctemp: String = default_loc.clone() + loc;
+        loc = &loctemp;
+
+        let src: &str = &locs[1].split(&format!("data{}", "eq")).collect::<Vec<&str>>()[1];
+
+        println!("{}", loc);
+        let mut nwrite = fs::File::create(loc)?;
+
+        nwrite.write_all(src.as_bytes());
+
+
+        buffer = "".to_string();
+      }
+    }
+    Ok(())
+}
+[/FURFILE-HEADER]
+[FURFILE-HEADER] Zfur-location=``"core/sources/install/httpHandler.rs"``;FUR-BONE;Zfur_dataequse std::{
+  net::TcpStream,
+  io::{Read, Write},
+  str,
+};
+
+#[derive(Debug)]
+pub struct Response {
+  pub header: String,
+  pub content: String,
+  pub attachment: String,
+}
+
+impl Response {
+  pub fn new(response: String) -> Response {
+
+    let mut contents = String::from(response.split("\r\nContent-Length:").collect::<Vec<&str>>()[1].split("\r\n\r\n").collect::<Vec<&str>>()[1].to_string());
+
+    let mut head = response.split("Content-Disposition:").collect::<Vec<&str>>()[0].to_string();
+    let mut attachments = "null".to_string();
+    if response.contains("filename=\"") {
+      attachments = response.split("filename=\"").collect::<Vec<&str>>()[1].split("\"").collect::<Vec<&str>>()[0].to_string();
+    }
+
+    return Response { header: head, content: contents, attachment: attachments };
+  }
+}
+
+pub fn make_request(host: &str, path: &str) -> Result<String, String> {
+
+  let mut stream = TcpStream::connect(host).map_err(|e| e.to_string())?;
+
+
+  let request = format!("GET {} HTTP/1.1\r\nHost: {}\r\n\r\n", path, host);
+  println!("Sending Request:\n{}", request);
+  stream.write_all(request.as_bytes()).map_err(|e| e.to_string())?;
+
+  let mut buffer = Vec::new();
+  stream.read_to_end(&mut buffer).map_err(|e| e.to_string())?;
+
+
+  let response = str::from_utf8(&buffer).map_err(|e| e.to_string())?.to_string();
+
+  Ok(response)
+}
+[/FURFILE-HEADER]
+[FURFILE-HEADER] Zfur-location=``"core/sources/mod.rs"``;FUR-BONE;Zfur_dataeqpub mod hi;
+pub mod install;
+[/FURFILE-HEADER]
+[FURFILE-HEADER] Zfur-location=``"core/sources/hi.rs"``;FUR-BONE;Zfur_dataeqpub fn hi() {
+  println!("Hi from really complex file structure");
+}
+[/FURFILE-HEADER]
+[FURFILE-HEADER] Zfur-location=``"core/sources/install.rs"``;FUR-BONE;Zfur_dataeqmod minifurball;
+mod httpHandler;
+use std::{
+  io,
+  io::{Read, Write},
+  fs,
+  path::Path,
+  collections::HashMap,
+  process::Command,
+};
+
+pub fn install(hosts: Vec<String>, packages: Vec<String>) -> std::io::Result<()> {
+
+  for host in hosts {
+    let host = host + ":2137";
+    if host.contains(".") {
+
+      for path in &packages {
+        let path = "/packages/".to_owned() + path + ".furball";
+      
+        let response = httpHandler::Response::new(httpHandler::make_request(&host, &path).unwrap());
+        println!("Got a response: \n{:#?}", response);
+
+
+        let binding = response.attachment.clone();
+
+        let mut path = binding.split("/").collect::<Vec<&str>>();
+
+        let mut buffer=String::from("core/");
+
+
+        for i in path {
+          if !i.contains(".") {
+            buffer = buffer.to_owned() + i + "/";
+            fs::create_dir_all(buffer.to_string());
+        } else {
+            let mut f = fs::File::create("core/".to_owned() + &binding.clone())?;
+            f.write_all(response.content.as_bytes())?;
+            minifurball::decode(Path::new(&("core/".to_owned() + &binding.clone())), "core/packages/".to_string());
+
+            fs::remove_file(&("core/".to_owned() + &binding.clone()));
+
+            println!("Parsing config file: {}", "core/".to_owned() + &binding.clone().replace(".furball", "") + "/package.conf");
+            let mut confile = fs::File::open("core/".to_owned() + &binding.clone().replace(".furball", "") + "/package.conf")?;
+            let mut confstr = String::new();
+            let _ = confile.read_to_string(&mut confstr).unwrap();
+
+            let mut conf = parseConf(confstr.clone());
+
+            println!("Compiling...");
+            if conf.get("compiler").unwrap()=="cargo" {
+              println!("{}", "core/".to_owned() + &binding.clone().replace(".furball", "") + "/Cargo.toml");
+              let output = Command::new("cargo")
+//                .current_dir("/home/foko/PackageManager/FokPkgMgr-client")
+                .arg("build")
+                .arg("--manifest-path") 
+                .arg("core/".to_owned()+ &binding.clone().replace(".furball", "") + "/Cargo.toml")
+                .output()
+                .expect("Failed to execute cargo build");
+
+              println!("{:#?}", output);
+            }
+
+            let outputmv = Command::new("mv")
+              .arg("core/".to_owned() + &binding.clone().replace(".furball", "/") + conf.get("output").unwrap())
+              .arg("core/packages/bin")
+              .output()
+              .expect("Failed to execute mv");
+            println!("{:#?}", outputmv);
+
+            //conf.output;
+
+          }
+
+        }
+
+      }
+    }
+  }
+  Ok(())
+}
+
+fn parseConf(conf: String) -> HashMap<String, String> {
+  let mut result: HashMap<String, String> = HashMap::new();
+  for i in conf.split("\n") {
+    if i.contains("=") {
+      result.insert(i.to_string().split("=").collect::<Vec<&str>>()[0].to_string(),
+      i.to_string().split("=").collect::<Vec<&str>>()[1].split("\"").collect::<Vec<&str>>()[1].to_string());
+    }
+  }
+
+  return result;
+}
+[/FURFILE-HEADER]
+[FURFILE-HEADER] Zfur-location=``"core/sources/httpHandler.rs"``;FUR-BONE;Zfur_dataequse std::{
+  net::TcpStream,
+  io::{Read, Write},
+  str,
+};
+
+#[derive(Debug)]
+pub struct Response {
+  pub header: String,
+  pub content: String,
+  pub attachment: String,
+}
+
+impl Response {
+  pub fn new(response: String) -> Response {
+
+    let mut contents = String::from(response.split("\r\nContent-Length:").collect::<Vec<&str>>()[1].split("\r\n\r\n").collect::<Vec<&str>>()[1].to_string());
+
+    let mut head = response.split("Content-Disposition:").collect::<Vec<&str>>()[0].to_string();
+    let mut attachments = response.split("filename=\"").collect::<Vec<&str>>()[1].split("\"").collect::<Vec<&str>>()[0].to_string();
+
+    return Response { header: head, content: contents, attachment: attachments };
+  }
+}
+
+pub fn make_request(host: &str, path: &str) -> Result<String, String> {
+
+  let mut stream = TcpStream::connect(host).map_err(|e| e.to_string())?;
+
+
+  let request = format!("GET {} HTTP/1.1\r\nHost: {}\r\n\r\n", path, host);
+  println!("Sending Request:\n{}", request);
+  stream.write_all(request.as_bytes()).map_err(|e| e.to_string())?;
+
+  let mut buffer = Vec::new();
+  stream.read_to_end(&mut buffer).map_err(|e| e.to_string())?;
+
+
+  let response = str::from_utf8(&buffer).map_err(|e| e.to_string())?.to_string();
+
+  Ok(response)
+}
+[/FURFILE-HEADER]
