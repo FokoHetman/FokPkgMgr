@@ -1,6 +1,6 @@
 quickly made readme file
 in a full release, client will work like:
-* Sealy - main piece of that. Installs and manages the core (core, fok and debugger)
+* Sealy - main piece of that. Installs and manages the core (`core`, `fok` and `debugger`)
 * fok - a real package manager. Installs, removes, updates packages etc.
 * core - this is where sources for `fok` are located. there's also path for packages and packages binaries.
 * debugger - used to test compatibility of current version, and the one downloaded to PRETEND environment (downloaded by Sealy). older debugger checks new core for backwards-compatibility, to warn user about some changes.
@@ -16,4 +16,4 @@ Right now it will just overwrite current installation, if you have one. I plan t
 now, compile `fok`. now you can use the package manager:
 > fok install package
 
-Packages on the local servers are located in packages folder. Make sure to compress your package into a furball!
+Packages on the local servers are located in packages folder. You can use pre-installed `fokables` as a reference. Make sure to compress your package into a furball!
