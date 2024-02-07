@@ -15,4 +15,5 @@ Right now it will just overwrite current installation, if you have one. I plan t
 
 now, compile `fok`. now you can use the package manager:
 > fok install package
+
 Packages on the local servers are located in packages folder. Make sure to compress your package into a furball!
